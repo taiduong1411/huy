@@ -1,48 +1,35 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+
 const userSchema = new mongoose.Schema(
   {
+    userId: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    name: {
+      type: String,
+      required: true,
+    },
     email: {
       type: String,
       required: true,
       unique: true,
-      trim: true,
-      lowercase: true,
     },
     password: {
       type: String,
       required: true,
-      minlength: 6,
     },
-    fullName: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    role: {
-      type: String,
-      enum: ["admin", "employee"],
-      default: "employee",
-    },
-    department: {
-      type: String,
-      required: true,
-    },
-    position: {
-      type: String,
-      required: true,
-    },
-    employeeId: {
+    phone: {
       type: String,
       required: true,
       unique: true,
     },
-    isActive: {
-      type: Boolean,
-      default: true,
-    },
-    lastLogin: {
-      type: Date,
+    role: {
+      type: String,
+      enum: ["admin", "user"],
+      default: "user",
     },
   },
   {
@@ -65,7 +52,7 @@ userSchema.pre("save", async function (next) {
 
 // Method to compare password
 userSchema.methods.comparePassword = async function (candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.password);
+  return await bcrypt.compare(candidatePassword, this.password);
 };
 
 const User = mongoose.model("User", userSchema);

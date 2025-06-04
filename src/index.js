@@ -1,57 +1,44 @@
-const express = require("express");
-const app = express();
-const { createServer } = require("http");
-const httpServer = createServer(app);
-const bodyParser = require("body-parser");
-const cors = require("cors");
-const database = require("./config/database");
-const userRoutes = require("./routes/userRoutes");
-const attendanceRoutes = require("./routes/attendanceRoutes");
-const faceRoutes = require("./routes/faceRoutes");
 require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const morgan = require("morgan");
+const helmet = require("helmet");
+const connectDB = require("./config/database");
 
-// Connect to database
-database.connect();
+// Import routes
+const attendanceRoutes = require("./routes/attendance.routes");
+const userRoutes = require("./routes/user.routes");
+const adminRoutes = require("./routes/admin.routes");
 
-const port = process.env.PORT || 3000;
+// Initialize express app
+const app = express();
 
-// Express Config
-app.use(express.json({ limit: "50mb" })); // Increased limit for face images
-app.use(bodyParser.json({ limit: "50mb" }));
-app.use(bodyParser.urlencoded({ extended: true }));
+// Connect to MongoDB
+connectDB();
+
+// Middleware
+app.use(cors());
+app.use(helmet());
+app.use(morgan("dev"));
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// CORS config
-app.use(cors());
-app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content, Accept, Content-Type, Authorization"
-  );
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET, POST, PUT, DELETE, PATCH, OPTIONS"
-  );
-  next();
-});
-
 // Routes
+app.use("/api/admin/Attendances", attendanceRoutes);
 app.use("/api/users", userRoutes);
-app.use("/api/attendance", attendanceRoutes);
-app.use("/api/face", faceRoutes);
-
-// Basic route
-app.get("/", (req, res) => {
-  return res.json({ message: "ABC hello" });
-});
+app.use("/api/admin", adminRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ message: "Something went wrong!" });
+  res.status(500).json({
+    success: false,
+    message: "Something went wrong!",
+  });
 });
 
-httpServer.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+// Start server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
