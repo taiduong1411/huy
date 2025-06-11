@@ -10,9 +10,6 @@ const generateToken = (userId) => {
 };
 
 const userController = {
-  // @desc    Register a new user
-  // @route   POST /api/users
-  // @access  Public
   registerUser: async (req, res) => {
     try {
       const { userId, name, email, password, phone } = req.body;
@@ -58,9 +55,6 @@ const userController = {
     }
   },
 
-  // @desc    Auth user & get token
-  // @route   POST /api/users/login
-  // @access  Public
   loginUser: async (req, res) => {
     try {
       const { email, password } = req.body;
@@ -94,9 +88,6 @@ const userController = {
     }
   },
 
-  // @desc    Get all users
-  // @route   GET /api/users
-  // @access  Private/Admin
   getUsers: async (req, res) => {
     try {
       const users = await User.find({}).select("-password");
@@ -112,9 +103,6 @@ const userController = {
     }
   },
 
-  // @desc    Get user profile
-  // @route   GET /api/users/profile
-  // @access  Private
   getProfile: async (req, res) => {
     try {
       const user = await User.findById(req.user._id).select("-password");
@@ -130,9 +118,6 @@ const userController = {
     }
   },
 
-  // @desc    Get user by ID
-  // @route   GET /api/users/:id
-  // @access  Private/Admin
   getUserById: async (req, res) => {
     try {
       const user = await User.findById(req.params.id).select("-password");

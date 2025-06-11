@@ -3,11 +3,16 @@ const router = express.Router();
 const attendanceController = require("../controllers/attendance.controller");
 const { authMiddleware } = require("../middleware/auth");
 
-// Route để nhận diện khuôn mặt và điểm danh
+// Tất cả routes yêu cầu authentication
+router.use(authMiddleware);
+
+// Route chấm công
 router.post("/", attendanceController.markAttendance);
 
-// Routes có bảo vệ bởi authentication
-router.get("/", authMiddleware, attendanceController.getAllAttendances);
-router.get("/:userId", authMiddleware, attendanceController.getUserAttendances);
+// Route xem lịch sử chấm công
+router.get("/user/:userId", attendanceController.getUserAttendance);
+
+// Route kiểm tra trạng thái chấm công hiện tại
+router.get("/status", attendanceController.getCurrentStatus);
 
 module.exports = router;

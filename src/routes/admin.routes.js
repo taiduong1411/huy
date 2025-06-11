@@ -16,4 +16,18 @@ router.delete("/users/:userId", adminController.deleteUser);
 router.get("/attendance", adminController.getAllAttendance);
 router.get("/attendance/stats", adminController.getAttendanceStats);
 
+// Shift Management Routes
+router.post("/shifts", adminController.createShift);
+router.put("/shifts/:shiftId", adminController.updateShift);
+router.get("/shifts", adminController.getShifts);
+router.get("/shifts/:shiftId", adminController.getShiftById);
+router.delete("/shifts/:shiftId", adminController.deleteShift);
+
+// Routes quản lý ca làm việc của user
+router.post("/shifts/assign", adminController.assignShiftToUser);
+router.post("/shifts/remove", adminController.removeShiftFromUser);
+router.post("/shifts/set-default", adminController.setDefaultShift);
+router.get("/:userId/shifts", adminController.getUserShifts);
+router.put("/shifts/update", adminController.updateUserShifts);
+
 module.exports = router;

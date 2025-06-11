@@ -1,10 +1,8 @@
 const User = require("../models/User");
 const Attendance = require("../models/Attendance");
+const Shift = require("../models/Shift");
 
 const adminController = {
-  // @desc    Get all users
-  // @route   GET /api/admin/users
-  // @access  Private/Admin
   getAllUsers: async (req, res) => {
     try {
       const users = await User.find({ role: "user" }).select("-password");
@@ -19,10 +17,6 @@ const adminController = {
       });
     }
   },
-
-  // @desc    Get user by ID
-  // @route   GET /api/admin/users/:userId
-  // @access  Private/Admin
   getUserById: async (req, res) => {
     try {
       const user = await User.findOne({ userId: req.params.userId }).select(
@@ -45,10 +39,6 @@ const adminController = {
       });
     }
   },
-
-  // @desc    Update user
-  // @route   PUT /api/admin/users/:userId
-  // @access  Private/Admin
   updateUser: async (req, res) => {
     try {
       const { name, email, phone } = req.body;
@@ -105,10 +95,6 @@ const adminController = {
       });
     }
   },
-
-  // @desc    Delete user
-  // @route   DELETE /api/admin/users/:userId
-  // @access  Private/Admin
   deleteUser: async (req, res) => {
     try {
       const user = await User.findOne({ userId: req.params.userId });
@@ -135,10 +121,6 @@ const adminController = {
       });
     }
   },
-
-  // @desc    Get all attendance records
-  // @route   GET /api/admin/attendance
-  // @access  Private/Admin
   getAllAttendance: async (req, res) => {
     try {
       const { startDate, endDate, userId } = req.query;
@@ -168,10 +150,6 @@ const adminController = {
       });
     }
   },
-
-  // @desc    Get attendance statistics
-  // @route   GET /api/admin/attendance/stats
-  // @access  Private/Admin
   getAttendanceStats: async (req, res) => {
     try {
       const { startDate, endDate } = req.query;
@@ -226,6 +204,396 @@ const adminController = {
       });
     } catch (error) {
       res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
+  createShift: async (req, res) => {
+    try {
+      const { shiftName, shiftStart, shiftEnd, toleranceMinutes, description } =
+        req.body;
+
+      // Kiểm tra ca làm việc đã tồn tại
+      const existingShift = await Shift.findOne({ shiftName });
+      if (existingShift) {
+        return res.status(400).json({
+          success: false,
+          message: "Tên ca làm việc đã tồn tại",
+        });
+      }
+
+      // Validate thời gian
+      const startTime = shiftStart.split(":").map(Number);
+      const endTime = shiftEnd.split(":").map(Number);
+      const startMinutes = startTime[0] * 60 + startTime[1];
+      const endMinutes = endTime[0] * 60 + endTime[1];
+
+      // Kiểm tra thời gian hợp lệ (nếu không qua ngày mới)
+      if (
+        endMinutes < startMinutes &&
+        endMinutes + 24 * 60 - startMinutes > 24 * 60
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Thời gian ca làm việc không hợp lệ",
+        });
+      }
+
+      const shift = new Shift({
+        shiftName,
+        shiftStart,
+        shiftEnd,
+        toleranceMinutes: toleranceMinutes || 15,
+        description: description || "",
+      });
+
+      await shift.save();
+
+      res.status(201).json({
+        success: true,
+        data: shift,
+        message: "Tạo ca làm việc thành công",
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
+  updateShift: async (req, res) => {
+    try {
+      const { shiftId } = req.params;
+      const {
+        shiftName,
+        shiftStart,
+        shiftEnd,
+        toleranceMinutes,
+        description,
+        isActive,
+      } = req.body;
+
+      const shift = await Shift.findById(shiftId);
+      if (!shift) {
+        return res.status(404).json({
+          success: false,
+          message: "Không tìm thấy ca làm việc",
+        });
+      }
+
+      // Kiểm tra tên ca mới có bị trùng không (nếu có thay đổi tên)
+      if (shiftName && shiftName !== shift.shiftName) {
+        const existingShift = await Shift.findOne({ shiftName });
+        if (existingShift) {
+          return res.status(400).json({
+            success: false,
+            message: "Tên ca làm việc đã tồn tại",
+          });
+        }
+      }
+
+      // Validate thời gian nếu có cập nhật
+      if (shiftStart && shiftEnd) {
+        const startTime = shiftStart.split(":").map(Number);
+        const endTime = shiftEnd.split(":").map(Number);
+        const startMinutes = startTime[0] * 60 + startTime[1];
+        const endMinutes = endTime[0] * 60 + endTime[1];
+
+        if (
+          endMinutes < startMinutes &&
+          endMinutes + 24 * 60 - startMinutes > 24 * 60
+        ) {
+          return res.status(400).json({
+            success: false,
+            message: "Thời gian ca làm việc không hợp lệ",
+          });
+        }
+      }
+
+      // Cập nhật thông tin
+      if (shiftName) shift.shiftName = shiftName;
+      if (shiftStart) shift.shiftStart = shiftStart;
+      if (shiftEnd) shift.shiftEnd = shiftEnd;
+      if (toleranceMinutes !== undefined)
+        shift.toleranceMinutes = toleranceMinutes;
+      if (description !== undefined) shift.description = description;
+      if (isActive !== undefined) shift.isActive = isActive;
+
+      await shift.save();
+
+      res.json({
+        success: true,
+        data: shift,
+        message: "Cập nhật ca làm việc thành công",
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
+  getShifts: async (req, res) => {
+    try {
+      const { active } = req.query;
+      let query = {};
+
+      // Nếu có query parameter active
+      if (active !== undefined) {
+        query.isActive = active === "true";
+      }
+
+      const shifts = await Shift.find(query).sort({ shiftStart: 1 });
+
+      res.json({
+        success: true,
+        data: shifts,
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
+  getShiftById: async (req, res) => {
+    try {
+      const { shiftId } = req.params;
+
+      const shift = await Shift.findById(shiftId);
+      if (!shift) {
+        return res.status(404).json({
+          success: false,
+          message: "Không tìm thấy ca làm việc",
+        });
+      }
+
+      res.json({
+        success: true,
+        data: shift,
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
+  deleteShift: async (req, res) => {
+    try {
+      const { shiftId } = req.params;
+
+      // Kiểm tra xem có attendance nào đang sử dụng shift này không
+      const hasAttendances = await Attendance.exists({ shiftId });
+      if (hasAttendances) {
+        // Thay vì xóa, ta sẽ đánh dấu là không còn active
+        await Shift.findByIdAndUpdate(shiftId, { isActive: false });
+        return res.json({
+          success: true,
+          message: "Ca làm việc đã được đánh dấu không hoạt động",
+        });
+      }
+
+      // Nếu không có attendance nào, có thể xóa an toàn
+      await Shift.findByIdAndDelete(shiftId);
+
+      res.json({
+        success: true,
+        message: "Xóa ca làm việc thành công",
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
+  assignShiftToUser: async (req, res) => {
+    try {
+      const { userId, shiftName, isDefault = false } = req.body;
+
+      // Kiểm tra user tồn tại
+      const user = await User.findOne({ userId });
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "Không tìm thấy người dùng",
+        });
+      }
+
+      // Kiểm tra ca làm việc tồn tại
+      const shift = await Shift.findOne({ shiftName });
+      if (!shift) {
+        return res.status(404).json({
+          success: false,
+          message: "Không tìm thấy ca làm việc",
+        });
+      }
+
+      // Thêm ca làm việc cho user
+      await user.addShift(shiftName, isDefault);
+
+      res.json({
+        success: true,
+        message: `Đã thêm ca làm việc '${shiftName}' cho người dùng ${user.name}`,
+        data: user.assignedShifts,
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
+
+  // API để xóa ca làm việc của user
+  removeShiftFromUser: async (req, res) => {
+    try {
+      const { userId, shiftName } = req.body;
+
+      // Kiểm tra user tồn tại
+      const user = await User.findOne({ userId });
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "Không tìm thấy người dùng",
+        });
+      }
+
+      // Xóa ca làm việc của user
+      await user.removeShift(shiftName);
+
+      res.json({
+        success: true,
+        message: `Đã xóa ca làm việc '${shiftName}' khỏi người dùng ${user.name}`,
+        data: user.assignedShifts,
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
+  // API để đặt ca làm việc mặc định cho user
+  setDefaultShift: async (req, res) => {
+    try {
+      const { userId, shiftName } = req.body;
+
+      // Kiểm tra user tồn tại
+      const user = await User.findOne({ userId });
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "Không tìm thấy người dùng",
+        });
+      }
+
+      // Đặt ca làm việc mặc định
+      await user.setDefaultShift(shiftName);
+
+      res.json({
+        success: true,
+        message: `Đã đặt ca làm việc '${shiftName}' làm ca mặc định cho người dùng ${user.name}`,
+        data: user.assignedShifts,
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
+  // API để lấy danh sách ca làm việc của user
+  getUserShifts: async (req, res) => {
+    try {
+      const { userId } = req.params;
+
+      // Kiểm tra user tồn tại
+      const user = await User.findOne({ userId });
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "Không tìm thấy người dùng",
+        });
+      }
+
+      // Lấy thông tin chi tiết của các ca làm việc
+      const shiftsDetails = await Promise.all(
+        user.assignedShifts.map(async (assignedShift) => {
+          const shift = await Shift.findOne({
+            shiftName: assignedShift.shiftName,
+          });
+          return {
+            ...assignedShift.toObject(),
+            shiftDetails: shift
+              ? {
+                  shiftStart: shift.shiftStart,
+                  shiftEnd: shift.shiftEnd,
+                  toleranceMinutes: shift.toleranceMinutes,
+                  isActive: shift.isActive,
+                  description: shift.description,
+                }
+              : null,
+          };
+        })
+      );
+
+      res.json({
+        success: true,
+        data: shiftsDetails,
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
+  // API để cập nhật nhiều ca làm việc cho user cùng lúc
+  updateUserShifts: async (req, res) => {
+    try {
+      const { userId, shifts } = req.body;
+
+      // Kiểm tra user tồn tại
+      const user = await User.findOne({ userId });
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "Không tìm thấy người dùng",
+        });
+      }
+
+      // Kiểm tra tất cả ca làm việc có tồn tại không
+      const shiftNames = shifts.map((s) => s.shiftName);
+      const existingShifts = await Shift.find({
+        shiftName: { $in: shiftNames },
+      });
+
+      if (existingShifts.length !== shiftNames.length) {
+        const notFoundShifts = shiftNames.filter(
+          (name) => !existingShifts.find((s) => s.shiftName === name)
+        );
+        return res.status(400).json({
+          success: false,
+          message: `Không tìm thấy các ca làm việc: ${notFoundShifts.join(
+            ", "
+          )}`,
+        });
+      }
+
+      // Cập nhật danh sách ca làm việc
+      user.assignedShifts = shifts;
+      await user.save();
+
+      res.json({
+        success: true,
+        message: "Đã cập nhật danh sách ca làm việc",
+        data: user.assignedShifts,
+      });
+    } catch (error) {
+      res.status(400).json({
         success: false,
         message: error.message,
       });

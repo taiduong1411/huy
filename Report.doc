@@ -1,0 +1,38 @@
+2.4 Giải pháp Backend và Hệ thống Web Server
+1.	Tổng quan hệ thống
+Hệ thống chấm công sử dụng kiến trúc client-server với backend được xây dựng bằng Node.js, tuân theo mô hình RESTful API. Giao tiếp giữa client và server sử dụng giao thức HTTP(S) và phản hồi định dạng JSON. Toàn bộ hệ thống xác thực và phân quyền người dùng đều được bảo vệ bằng JWT (JSON Web Token).
+2.	Các chức năng chính
+1.	Xác thực người dùng
+•	Người dùng có thể đăng ký và đăng nhập tài khoản bằng email và mật khẩu.
+•	Sau khi đăng nhập thành công, hệ thống cấp một JWT để xác minh danh tính cho các phiên làm việc tiếp theo.
+•	Có phân quyền giữa người dùng thường (user) và người quản trị (admin) để bảo vệ các chức năng nhạy cảm.
+2.	Chấm công
+•	Người dùng thực hiện chấm công thông qua API /api/admin/Attendances, thông tin bao gồm userId, thời gian (timestamp) và trạng thái (status) sẽ được lưu vào cơ sở dữ liệu.
+•	Người dùng có thể truy xuất lịch sử chấm công của mình thông qua API /api/attendance/:userId.
+3.	Quản trị hệ thống (Admin)
+•	Quản lý người dùng: xem danh sách, cập nhật, xoá hoặc thêm mới người dùng.
+•	Thống kê điểm danh: xem báo cáo tổng hợp lượt chấm công theo ngày hoặc theo từng người.
+•	Truy cập các route bảo vệ để giám sát và kiểm tra toàn bộ hoạt động của hệ thống.
+4.	Cấu trúc API Endpoints
+Xác thực
+  - POST /api/users/register: Đăng ký tài khoản mới
+  - POST /api/users/login: Đăng nhập tài khoản
+Chấm công
+  - POST /api/admin/Attendances: Ghi nhận điểm danh của người dùng
+  - GET /api/attendance/:userId: Truy xuất lịch sử chấm công
+Quản trị hệ thống
+  - GET /api/admin/attendance/stats: Xem thống kê điểm danh toàn hệ thống
+  - GET /api/admin/users: Lấy danh sách người dùng trong hệ thống
+5.	Cơ chế bảo mật
+- Xác thực bằng JWT: Token được gắn trong Authorization Header và kiểm tra tại mỗi lần truy cập API.
+- Middleware kiểm tra quyền: Phân biệt rõ giữa người dùng và admin, từ đó giới hạn quyền truy cập vào các API quan trọng.
+- Phân quyền role-based: Role user chỉ có thể truy xuất lịch sử cá nhân, còn role admin có thể thực hiện thống kê và thao tác toàn cục.
+6.	Cơ sở dữ liệu
+- User Model
+  - Trường thông tin: userId, name, email, password (hash), phone, role, timestamps
+- Attendance Model
+  - Trường thông tin: userId, timestamp, status, timestamps
+7.	Nguyên lý hoạt động
+- Khi một người dùng đăng nhập, hệ thống xác thực và cấp JWT.
+- Mỗi lần chấm công, hệ thống tiếp nhận dữ liệu từ client (do AI xử lý ảnh đã gửi kết quả nhận diện), và ghi nhận vào database.
+- Người quản trị có thể truy xuất thống kê và lịch sử để kiểm tra mức độ tuân thủ chấm công của từng nhân viên.
